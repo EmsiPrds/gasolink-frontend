@@ -6,6 +6,7 @@ import { DashboardPage } from "../pages/DashboardPage";
 import { AdminLoginPage } from "../pages/admin/AdminLoginPage";
 import { AdminHomePage } from "../pages/admin/AdminHomePage";
 import { AdminIngestionPage } from "../pages/admin/AdminIngestionPage";
+import { AdminDoeIngestionPage } from "../pages/admin/AdminDoeIngestionPage";
 import { AdminPhPricesPage } from "../pages/admin/AdminPhPricesPage";
 import { AdminCompanyPricesPage } from "../pages/admin/AdminCompanyPricesPage";
 import { AdminInsightsPage } from "../pages/admin/AdminInsightsPage";
@@ -27,6 +28,7 @@ export const router = createBrowserRouter([
       { path: "login", element: <AdminLoginPage /> },
       { index: true, element: <AdminHomePage /> },
       { path: "ingestion", element: <AdminIngestionPage /> },
+      { path: "doe", element: <AdminDoeIngestionPage /> },
       { path: "ph-prices", element: <AdminPhPricesPage /> },
       { path: "company-prices", element: <AdminCompanyPricesPage /> },
       { path: "insights", element: <AdminInsightsPage /> },

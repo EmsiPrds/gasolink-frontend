@@ -20,6 +20,7 @@ export function AdminLayout() {
           <nav className="space-y-1 text-sm">
             <AdminLink to="/admin">Overview</AdminLink>
             <AdminLink to="/admin/ingestion">Ingestion</AdminLink>
+            <AdminLink to="/admin/doe">DOE ingestion</AdminLink>
             <AdminLink to="/admin/ph-prices">PH prices</AdminLink>
             <AdminLink to="/admin/company-prices">Company prices</AdminLink>
             <AdminLink to="/admin/insights">Insights</AdminLink>

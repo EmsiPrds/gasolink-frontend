@@ -2,12 +2,23 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { adminApi } from "../../services/adminApi";
 import type { ApiResponse } from "../../types/api";
 
+export type ModuleLog = {
+  lastRunAt: string;
+  status: string;
+  message: string;
+};
+
 export type IngestionHealth = {
   rawCount: number;
   rawFailed: number;
   normalizedCount: number;
   publishedCount: number;
   latestLog: null | { module: string; status: string; message: string; timestamp: string };
+  pipelineStatus: {
+    collectors: ModuleLog | null;
+    reconciliation: ModuleLog | null;
+    dataQuality: ModuleLog | null;
+  };
 };
 
 export function useAdminIngestionHealth() {

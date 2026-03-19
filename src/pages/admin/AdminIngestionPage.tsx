@@ -56,6 +56,24 @@ export function AdminIngestionPage() {
         <Stat title="Published prices" value={health.data ? String(health.data.publishedCount) : "—"} />
       </div>
 
+      <div className="mt-6 grid gap-4 md:grid-cols-3">
+        <PipelineStatusCard
+          title="Collectors"
+          log={health.data?.pipelineStatus.collectors ?? null}
+          loading={health.isLoading}
+        />
+        <PipelineStatusCard
+          title="Reconciliation"
+          log={health.data?.pipelineStatus.reconciliation ?? null}
+          loading={health.isLoading}
+        />
+        <PipelineStatusCard
+          title="Data quality"
+          log={health.data?.pipelineStatus.dataQuality ?? null}
+          loading={health.isLoading}
+        />
+      </div>
+
       <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-5">
         <p className="text-sm font-semibold text-white">Latest system log</p>
         {health.isLoading ? (
@@ -133,6 +151,30 @@ function Stat(props: { title: string; value: string; tone?: "warn" }) {
     <div className={"rounded-2xl border p-4 " + tone}>
       <div className="text-xs font-semibold uppercase tracking-wide opacity-90">{props.title}</div>
       <div className="mt-2 text-2xl font-semibold">{props.value}</div>
+    </div>
+  );
+}
+
+function PipelineStatusCard(props: {
+  title: string;
+  log: null | { lastRunAt: string; status: string; message: string };
+  loading?: boolean;
+}) {
+  const status = props.loading ? "Loading…" : props.log ? props.log.status : "Not run";
+  const time = props.log ? format(new Date(props.log.lastRunAt), "PP p") : "—";
+  const tone =
+    props.loading || !props.log
+      ? "border-white/10 bg-white/5 text-white"
+      : props.log.status === "success"
+      ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-200"
+      : "border-energy-500/20 bg-energy-500/10 text-energy-200";
+
+  return (
+    <div className={"rounded-2xl border p-4 " + tone}>
+      <div className="text-xs font-semibold uppercase tracking-wide opacity-90">{props.title}</div>
+      <div className="mt-2 text-lg font-semibold">{status}</div>
+      <div className="mt-1 text-xs text-slate-300">{time}</div>
+      {props.log ? <div className="mt-1 text-sm text-slate-200">{props.log.message}</div> : null}
     </div>
   );
 }
