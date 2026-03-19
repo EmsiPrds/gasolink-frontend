@@ -39,8 +39,15 @@ export function DataSourceModal({
           ) : (
             <div className="space-y-4">
               <div className="rounded-xl border border-slate-200/60 bg-slate-50 px-4 py-3 text-sm dark:border-white/10 dark:bg-white/5">
-                <div className="font-medium text-slate-900 dark:text-white">
-                  {record.fuelType} • {record.region}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="font-medium text-slate-900 dark:text-white">
+                    {record.fuelType} • {record.region}
+                  </div>
+                  {record.supportingSources?.some((s) => s.sourceType === "official_local" && /DOE/i.test(s.sourceName)) && (
+                    <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-500">
+                      DOE-verified
+                    </span>
+                  )}
                 </div>
                 <div className="mt-1 text-slate-700 dark:text-slate-200">
                   Status: <span className="font-medium">{record.status}</span>

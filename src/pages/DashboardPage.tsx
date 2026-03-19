@@ -589,37 +589,49 @@ function ErrorBox({ message }: { message: string }) {
 }
 
 function toGlobalCards(items: GlobalPrice[]) {
+  const isFiniteNumber = (v: unknown): v is number =>
+    typeof v === "number" && Number.isFinite(v);
   const byType = new Map(items.map((i) => [i.type, i]));
   return [
     {
       label: "Brent Crude (USD)",
-      value: byType.get("Brent") ? `$ ${byType.get("Brent")!.value.toFixed(2)}` : "—",
-      changePercent: byType.get("Brent")?.changePercent ?? 0,
+      value: isFiniteNumber(byType.get("Brent")?.value) ? `$ ${byType.get("Brent")!.value.toFixed(2)}` : "—",
+      changePercent: isFiniteNumber(byType.get("Brent")?.changePercent) ? byType.get("Brent")!.changePercent : 0,
       lastUpdated: byType.get("Brent")?.timestamp,
     },
     {
       label: "WTI Crude (USD)",
-      value: byType.get("WTI") ? `$ ${byType.get("WTI")!.value.toFixed(2)}` : "—",
-      changePercent: byType.get("WTI")?.changePercent ?? 0,
+      value: isFiniteNumber(byType.get("WTI")?.value) ? `$ ${byType.get("WTI")!.value.toFixed(2)}` : "—",
+      changePercent: isFiniteNumber(byType.get("WTI")?.changePercent) ? byType.get("WTI")!.changePercent : 0,
       lastUpdated: byType.get("WTI")?.timestamp,
     },
     {
       label: "USD/PHP",
-      value: byType.get("USDPHP") ? `₱ ${byType.get("USDPHP")!.value.toFixed(2)}` : "—",
-      changePercent: byType.get("USDPHP")?.changePercent ?? 0,
+      value: isFiniteNumber(byType.get("USDPHP")?.value) ? `₱ ${byType.get("USDPHP")!.value.toFixed(2)}` : "—",
+      changePercent: isFiniteNumber(byType.get("USDPHP")?.changePercent) ? byType.get("USDPHP")!.changePercent : 0,
       lastUpdated: byType.get("USDPHP")?.timestamp,
     },
   ];
 }
 
 function toPhCards(items: FuelPricePH[]) {
+  const isFiniteNumber = (v: unknown): v is number =>
+    typeof v === "number" && Number.isFinite(v);
   const byFuel = new Map(items.map((i) => [i.fuelType, i]));
   return ["Gasoline", "Diesel", "Kerosene"].map((fuel) => {
     const doc = byFuel.get(fuel as FuelType);
+    const price = doc?.price;
+    const weeklyChange = doc?.weeklyChange;
+    const priceNumber = isFiniteNumber(price) ? price : null;
+    const weeklyChangeNumber = isFiniteNumber(weeklyChange) ? weeklyChange : null;
+    const computedChangePercent =
+      priceNumber !== null && weeklyChangeNumber !== null
+        ? (weeklyChangeNumber / Math.max(1, priceNumber - weeklyChangeNumber)) * 100
+        : 0;
     return {
       label: `${fuel} (PHP/L)`,
-      value: doc ? `₱ ${doc.price.toFixed(2)}` : "—",
-      changePercent: doc ? (doc.weeklyChange / Math.max(1, doc.price - doc.weeklyChange)) * 100 : 0,
+      value: priceNumber !== null ? `₱ ${priceNumber.toFixed(2)}` : "—",
+      changePercent: computedChangePercent,
       lastUpdated: doc?.updatedAt,
       status: doc?.status ?? "Estimate",
       record: doc ?? null,
