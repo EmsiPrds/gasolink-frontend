@@ -18,6 +18,7 @@ import { AlertBanner } from "../components/banners/AlertBanner";
 import { SectionHeader } from "../components/ui/SectionHeader";
 import { SegmentedControl } from "../components/ui/SegmentedControl";
 import { DataSourceModal } from "../components/modals/DataSourceModal";
+import { ReportPriceModal } from "../components/modals/ReportPriceModal";
 import { useAlerts } from "../hooks/useAlerts";
 import { useCompanyPrices } from "../hooks/useCompanyPrices";
 import { useForecast } from "../hooks/useForecast";
@@ -42,6 +43,7 @@ export function DashboardPage() {
   const location = useLocation();
   const [panel, setPanel] = useState<"overview" | "philippines" | "insights">("overview");
   const [sourceModalOpen, setSourceModalOpen] = useState(false);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
   const [selectedPhRecord, setSelectedPhRecord] = useState<FuelPricePH | null>(null);
 
   const globalLatest = useGlobalLatest();
@@ -96,6 +98,13 @@ export function DashboardPage() {
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <button 
+            type="button"
+            onClick={() => setReportModalOpen(true)} 
+            className="px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-xl shadow-sm text-sm whitespace-nowrap mt-4 sm:mt-0"
+          >
+            Report Price
+          </button>
           <Select label="Region" value={region} onChange={(v) => setRegion(v as Region)} options={regions} />
           <div className="sm:hidden">
             <Select
@@ -210,6 +219,7 @@ export function DashboardPage() {
                               metaLabel="PH Local Price"
                               label={c.label}
                               value={c.value}
+                              extraValue={c.extraValue}
                               changePercent={c.changePercent}
                               lastUpdated={c.lastUpdated}
                               rightBadge={<StatusBadge status={c.status} />}
@@ -341,6 +351,7 @@ export function DashboardPage() {
                             metaLabel="PH Local Price"
                             label={c.label}
                             value={c.value}
+                            extraValue={c.extraValue}
                             changePercent={c.changePercent}
                             lastUpdated={c.lastUpdated}
                             rightBadge={<StatusBadge status={c.status} />}
@@ -469,6 +480,10 @@ export function DashboardPage() {
         open={sourceModalOpen}
         onClose={() => setSourceModalOpen(false)}
         record={selectedPhRecord}
+      />
+      <ReportPriceModal
+        isOpen={reportModalOpen}
+        onClose={() => setReportModalOpen(false)}
       />
     </div>
   );
@@ -621,8 +636,10 @@ function toPhCards(items: FuelPricePH[]) {
   return ["Gasoline", "Diesel", "Kerosene"].map((fuel) => {
     const doc = byFuel.get(fuel as FuelType);
     const price = doc?.price;
+    const averagePrice = doc?.averagePrice;
     const weeklyChange = doc?.weeklyChange;
     const priceNumber = isFiniteNumber(price) ? price : null;
+    const averagePriceNumber = isFiniteNumber(averagePrice) ? averagePrice : null;
     const weeklyChangeNumber = isFiniteNumber(weeklyChange) ? weeklyChange : null;
     const computedChangePercent =
       priceNumber !== null && weeklyChangeNumber !== null
@@ -631,6 +648,7 @@ function toPhCards(items: FuelPricePH[]) {
     return {
       label: `${fuel} (PHP/L)`,
       value: priceNumber !== null ? `₱ ${priceNumber.toFixed(2)}` : "—",
+      extraValue: averagePriceNumber !== null ? `₱ ${averagePriceNumber.toFixed(2)}` : undefined,
       changePercent: computedChangePercent,
       lastUpdated: doc?.updatedAt,
       status: doc?.status ?? "Estimate",

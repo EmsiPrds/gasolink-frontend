@@ -16,6 +16,7 @@ export type FuelPricePH = {
   _id: string;
   fuelType: FuelType;
   price: number;
+  averagePrice?: number;
   weeklyChange: number;
   region: Region;
   source: string;

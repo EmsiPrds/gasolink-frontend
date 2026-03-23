@@ -7,6 +7,7 @@ export function MetricCard(props: {
   metaLabel?: string;
   label: string;
   value: string;
+  extraValue?: string;
   changePercent?: number;
   lastUpdated?: string;
   rightBadge?: ReactNode;
@@ -36,7 +37,14 @@ export function MetricCard(props: {
           {props.rightBadge}
         </div>
         <div className="flex items-end justify-between gap-3">
-          <p className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">{props.value}</p>
+          <div className="flex flex-col">
+            <p className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">{props.value}</p>
+            {props.extraValue && (
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                Avg: {props.extraValue}
+              </p>
+            )}
+          </div>
           <div className={"flex items-center gap-1 text-sm " + trendColor}>
             {up ? <ArrowUpRight className="size-4" /> : down ? <ArrowDownRight className="size-4" /> : null}
             <span>{change.toFixed(2)}%</span>

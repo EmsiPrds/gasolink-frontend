@@ -10,7 +10,6 @@ import {
 export function AdminIngestionPage() {
   const health = useAdminIngestionHealth();
   const failedRaw = useAdminFailedRawSources();
-  const triggerCollectors = useAdminTriggerCollectors();
   const triggerReconcile = useAdminTriggerReconcile();
   const triggerQuality = useAdminTriggerQuality();
 
@@ -18,57 +17,50 @@ export function AdminIngestionPage() {
     <div className="mx-auto w-full max-w-5xl px-4 py-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-white">Ingestion & Accuracy</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-white">AI Intelligence Control</h1>
           <p className="mt-1 text-sm text-slate-200">
-            Monitor scraping health, reconciliation, and data-quality checks.
+            Monitor the autonomous AI-driven monitoring system and accuracy framework.
           </p>
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <button
             className="rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-500 disabled:opacity-60"
-            onClick={() => triggerCollectors.mutate()}
-            disabled={triggerCollectors.isPending}
-          >
-            {triggerCollectors.isPending ? "Starting…" : "Trigger collectors"}
-          </button>
-          <button
-            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-white hover:bg-white/10 disabled:opacity-60"
             onClick={() => triggerReconcile.mutate()}
             disabled={triggerReconcile.isPending}
           >
-            {triggerReconcile.isPending ? "Starting…" : "Trigger reconcile"}
+            {triggerReconcile.isPending ? "Syncing…" : "Force system sync"}
           </button>
           <button
             className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-white hover:bg-white/10 disabled:opacity-60"
             onClick={() => triggerQuality.mutate()}
             disabled={triggerQuality.isPending}
           >
-            {triggerQuality.isPending ? "Starting…" : "Run quality checks"}
+            {triggerQuality.isPending ? "Analyzing…" : "Run accuracy check"}
           </button>
         </div>
       </div>
 
       <div className="mt-6 grid gap-4 md:grid-cols-4">
-        <Stat title="Raw snapshots" value={health.data ? String(health.data.rawCount) : "—"} />
-        <Stat title="Raw failed" value={health.data ? String(health.data.rawFailed) : "—"} tone="warn" />
-        <Stat title="Normalized records" value={health.data ? String(health.data.normalizedCount) : "—"} />
-        <Stat title="Published prices" value={health.data ? String(health.data.publishedCount) : "—"} />
+        <Stat title="Intelligence sources" value={health.data ? String(health.data.rawCount) : "—"} />
+        <Stat title="Unreliable flags" value={health.data ? String(health.data.rawFailed) : "—"} tone="warn" />
+        <Stat title="Valid records" value={health.data ? String(health.data.normalizedCount) : "—"} />
+        <Stat title="Market outputs" value={health.data ? String(health.data.publishedCount) : "—"} />
       </div>
 
       <div className="mt-6 grid gap-4 md:grid-cols-3">
         <PipelineStatusCard
-          title="Collectors"
+          title="AI Search Engine"
           log={health.data?.pipelineStatus.collectors ?? null}
           loading={health.isLoading}
         />
         <PipelineStatusCard
-          title="Reconciliation"
+          title="Accuracy Layer"
           log={health.data?.pipelineStatus.reconciliation ?? null}
           loading={health.isLoading}
         />
         <PipelineStatusCard
-          title="Data quality"
+          title="Data Intelligence"
           log={health.data?.pipelineStatus.dataQuality ?? null}
           loading={health.isLoading}
         />
