@@ -15,8 +15,8 @@ export type GlobalPrice = {
 export type FuelPricePH = {
   _id: string;
   fuelType: FuelType;
-  price: number;
-  averagePrice?: number;
+  price: number | null;
+  averagePrice?: number | null;
   weeklyChange: number;
   region: Region;
   source: string;
@@ -41,7 +41,7 @@ export type CompanyPrice = {
   _id: string;
   companyName: string;
   fuelType: FuelType;
-  price: number;
+  price: number | null;
   region: Region;
   city?: string;
   status: PriceStatus;

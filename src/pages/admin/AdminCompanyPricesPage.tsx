@@ -88,7 +88,7 @@ export function AdminCompanyPricesPage() {
                     <tr key={r._id} className="hover:bg-white/5">
                       <td className="px-4 py-3 font-medium text-white">{r.companyName}</td>
                       <td className="px-4 py-3 text-slate-200">{r.fuelType}</td>
-                      <td className="px-4 py-3 text-slate-200">₱ {r.price.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-slate-200">{formatPhpPrice(r.price)}</td>
                       <td className="px-4 py-3 text-slate-200">{r.city ? `${r.region} • ${r.city}` : r.region}</td>
                       <td className="px-4 py-3">
                         <StatusBadge status={r.status} />
@@ -146,3 +146,6 @@ function Field(props: { label: string; value: string; onChange: (v: string) => v
   );
 }
 
+function formatPhpPrice(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value) ? `₱ ${value.toFixed(2)}` : "—";
+}

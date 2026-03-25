@@ -82,7 +82,7 @@ export function AdminPhPricesPage() {
                     <tr key={r._id} className="hover:bg-white/5">
                       <td className="px-4 py-3 text-white">{r.region}</td>
                       <td className="px-4 py-3 text-slate-200">{r.fuelType}</td>
-                      <td className="px-4 py-3 text-slate-200">₱ {r.price.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-slate-200">{formatPhpPrice(r.price)}</td>
                       <td className="px-4 py-3 text-slate-200">
                         {r.weeklyChange > 0 ? "+" : ""}
                         {r.weeklyChange.toFixed(2)}
@@ -143,3 +143,6 @@ function Field(props: { label: string; value: string; onChange: (v: string) => v
   );
 }
 
+function formatPhpPrice(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value) ? `₱ ${value.toFixed(2)}` : "—";
+}

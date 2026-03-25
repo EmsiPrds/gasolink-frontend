@@ -1,7 +1,7 @@
-import { ArrowDownRight, ArrowUpRight } from "lucide-react";
-import { format } from "date-fns";
-import { Card, CardBody } from "../ui/Card";
 import type { ReactNode } from "react";
+import { format } from "date-fns";
+import { ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { Card, CardBody } from "../ui/Card";
 
 export function MetricCard(props: {
   metaLabel?: string;
@@ -13,9 +13,9 @@ export function MetricCard(props: {
   rightBadge?: ReactNode;
   onClick?: () => void;
 }) {
-  const change = props.changePercent ?? 0;
-  const up = change > 0.05;
-  const down = change < -0.05;
+  const change = props.changePercent;
+  const up = typeof change === "number" && change > 0.05;
+  const down = typeof change === "number" && change < -0.05;
   const trendColor = up
     ? "text-emerald-700 dark:text-emerald-200"
     : down
@@ -39,23 +39,21 @@ export function MetricCard(props: {
         <div className="flex items-end justify-between gap-3">
           <div className="flex flex-col">
             <p className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">{props.value}</p>
-            {props.extraValue && (
-              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                Avg: {props.extraValue}
-              </p>
-            )}
+            {props.extraValue ? (
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Avg: {props.extraValue}</p>
+            ) : null}
           </div>
-          <div className={"flex items-center gap-1 text-sm " + trendColor}>
-            {up ? <ArrowUpRight className="size-4" /> : down ? <ArrowDownRight className="size-4" /> : null}
-            <span>{change.toFixed(2)}%</span>
-          </div>
+          {typeof change === "number" ? (
+            <div className={"flex items-center gap-1 text-sm " + trendColor}>
+              {up ? <ArrowUpRight className="size-4" /> : down ? <ArrowDownRight className="size-4" /> : null}
+              <span>{change.toFixed(2)}%</span>
+            </div>
+          ) : null}
         </div>
         <p className="text-[11px] text-slate-500 dark:text-slate-400">
-          Last updated:{" "}
-          {props.lastUpdated ? format(new Date(props.lastUpdated), "PP p") : "—"}
+          Last updated: {props.lastUpdated ? format(new Date(props.lastUpdated), "PP p") : "Not available"}
         </p>
       </CardBody>
     </Card>
   );
 }
-

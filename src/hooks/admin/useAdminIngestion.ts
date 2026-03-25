@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminApi } from "../../services/adminApi";
 import type { ApiResponse } from "../../types/api";
 
@@ -58,33 +58,52 @@ export function useAdminFailedRawSources() {
   });
 }
 
+function useInvalidateIngestionQueries() {
+  const qc = useQueryClient();
+
+  return async function invalidateIngestionQueries() {
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ["admin", "ingestion", "health"] }),
+      qc.invalidateQueries({ queryKey: ["admin", "ingestion", "raw", "failed"] }),
+    ]);
+  };
+}
+
 export function useAdminTriggerCollectors() {
+  const invalidateIngestionQueries = useInvalidateIngestionQueries();
+
   return useMutation({
     mutationFn: async () => {
       const res = await adminApi.post<ApiResponse<{ requested: boolean }>>("/admin/ingestion/collect");
       if (!res.data.ok) throw new Error(res.data.error.message);
       return res.data.data.requested;
     },
+    onSuccess: invalidateIngestionQueries,
   });
 }
 
 export function useAdminTriggerReconcile() {
+  const invalidateIngestionQueries = useInvalidateIngestionQueries();
+
   return useMutation({
     mutationFn: async () => {
       const res = await adminApi.post<ApiResponse<{ requested: boolean }>>("/admin/ingestion/reconcile");
       if (!res.data.ok) throw new Error(res.data.error.message);
       return res.data.data.requested;
     },
+    onSuccess: invalidateIngestionQueries,
   });
 }
 
 export function useAdminTriggerQuality() {
+  const invalidateIngestionQueries = useInvalidateIngestionQueries();
+
   return useMutation({
     mutationFn: async () => {
       const res = await adminApi.post<ApiResponse<{ requested: boolean }>>("/admin/ingestion/quality");
       if (!res.data.ok) throw new Error(res.data.error.message);
       return res.data.data.requested;
     },
+    onSuccess: invalidateIngestionQueries,
   });
 }
-

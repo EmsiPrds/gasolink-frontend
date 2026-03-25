@@ -10,6 +10,7 @@ import {
 export function AdminIngestionPage() {
   const health = useAdminIngestionHealth();
   const failedRaw = useAdminFailedRawSources();
+  const triggerCollectors = useAdminTriggerCollectors();
   const triggerReconcile = useAdminTriggerReconcile();
   const triggerQuality = useAdminTriggerQuality();
 
@@ -19,38 +20,45 @@ export function AdminIngestionPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-white">AI Intelligence Control</h1>
           <p className="mt-1 text-sm text-slate-200">
-            Monitor the autonomous AI-driven monitoring system and accuracy framework.
+            Monitor source collection, reconciliation, and the accuracy framework.
           </p>
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <button
             className="rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-500 disabled:opacity-60"
+            onClick={() => triggerCollectors.mutate()}
+            disabled={triggerCollectors.isPending}
+          >
+            {triggerCollectors.isPending ? "Collecting..." : "Force system sync"}
+          </button>
+          <button
+            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-white hover:bg-white/10 disabled:opacity-60"
             onClick={() => triggerReconcile.mutate()}
             disabled={triggerReconcile.isPending}
           >
-            {triggerReconcile.isPending ? "Syncing…" : "Force system sync"}
+            {triggerReconcile.isPending ? "Reconciling..." : "Run publish sync"}
           </button>
           <button
             className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-white hover:bg-white/10 disabled:opacity-60"
             onClick={() => triggerQuality.mutate()}
             disabled={triggerQuality.isPending}
           >
-            {triggerQuality.isPending ? "Analyzing…" : "Run accuracy check"}
+            {triggerQuality.isPending ? "Analyzing..." : "Run accuracy check"}
           </button>
         </div>
       </div>
 
       <div className="mt-6 grid gap-4 md:grid-cols-4">
-        <Stat title="Intelligence sources" value={health.data ? String(health.data.rawCount) : "—"} />
-        <Stat title="Unreliable flags" value={health.data ? String(health.data.rawFailed) : "—"} tone="warn" />
-        <Stat title="Valid records" value={health.data ? String(health.data.normalizedCount) : "—"} />
-        <Stat title="Market outputs" value={health.data ? String(health.data.publishedCount) : "—"} />
+        <Stat title="Intelligence sources" value={health.data ? String(health.data.rawCount) : "N/A"} />
+        <Stat title="Unreliable flags" value={health.data ? String(health.data.rawFailed) : "N/A"} tone="warn" />
+        <Stat title="Valid records" value={health.data ? String(health.data.normalizedCount) : "N/A"} />
+        <Stat title="Market outputs" value={health.data ? String(health.data.publishedCount) : "N/A"} />
       </div>
 
       <div className="mt-6 grid gap-4 md:grid-cols-3">
         <PipelineStatusCard
-          title="AI Search Engine"
+          title="Source Collection"
           log={health.data?.pipelineStatus.collectors ?? null}
           loading={health.isLoading}
         />
@@ -69,13 +77,13 @@ export function AdminIngestionPage() {
       <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-5">
         <p className="text-sm font-semibold text-white">Latest system log</p>
         {health.isLoading ? (
-          <p className="mt-2 text-sm text-slate-200">Loading…</p>
+          <p className="mt-2 text-sm text-slate-200">Loading...</p>
         ) : health.isError ? (
           <p className="mt-2 text-sm text-energy-200">Failed to load ingestion health.</p>
         ) : health.data?.latestLog ? (
           <div className="mt-2 text-sm text-slate-200">
             <div>
-              <span className="font-semibold">{health.data.latestLog.module}</span> • {health.data.latestLog.status}
+              <span className="font-semibold">{health.data.latestLog.module}</span> | {health.data.latestLog.status}
             </div>
             <div className="mt-1">{health.data.latestLog.message}</div>
             <div className="mt-1 text-xs text-slate-300">
@@ -94,7 +102,7 @@ export function AdminIngestionPage() {
         </p>
 
         {failedRaw.isLoading ? (
-          <p className="mt-3 text-sm text-slate-200">Loading…</p>
+          <p className="mt-3 text-sm text-slate-200">Loading...</p>
         ) : failedRaw.isError ? (
           <p className="mt-3 text-sm text-energy-200">Failed to load failed snapshots.</p>
         ) : failedRaw.data?.length ? (
@@ -119,7 +127,7 @@ export function AdminIngestionPage() {
                     </td>
                     <td className="py-2 pr-3 text-xs text-slate-300">{r.parserId}</td>
                     <td className="py-2 pr-3 text-xs text-slate-300">{format(new Date(r.scrapedAt), "PP p")}</td>
-                    <td className="py-2 pr-3 text-xs text-energy-200">{r.errorMessage ?? "—"}</td>
+                    <td className="py-2 pr-3 text-xs text-energy-200">{r.errorMessage ?? "N/A"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -152,14 +160,14 @@ function PipelineStatusCard(props: {
   log: null | { lastRunAt: string; status: string; message: string };
   loading?: boolean;
 }) {
-  const status = props.loading ? "Loading…" : props.log ? props.log.status : "Not run";
-  const time = props.log ? format(new Date(props.log.lastRunAt), "PP p") : "—";
+  const status = props.loading ? "Loading..." : props.log ? props.log.status : "Not run";
+  const time = props.log ? format(new Date(props.log.lastRunAt), "PP p") : "Not available";
   const tone =
     props.loading || !props.log
       ? "border-white/10 bg-white/5 text-white"
       : props.log.status === "success"
-      ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-200"
-      : "border-energy-500/20 bg-energy-500/10 text-energy-200";
+        ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-200"
+        : "border-energy-500/20 bg-energy-500/10 text-energy-200";
 
   return (
     <div className={"rounded-2xl border p-4 " + tone}>
@@ -170,4 +178,3 @@ function PipelineStatusCard(props: {
     </div>
   );
 }
-
