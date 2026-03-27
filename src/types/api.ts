@@ -25,6 +25,16 @@ export type FuelPricePH = {
 
   // Accuracy-first fields (optional until backend fully populates everywhere)
   confidenceScore?: number;
+  confidenceLabel?: "Low" | "Medium" | "High" | "Very High";
+  estimatedPrice?: number | null;
+  sourceBreakdown?: Array<{
+    sourceCategory: "global_api" | "doe_official" | "web_scrape" | "user_report";
+    sampleSize: number;
+    avgConfidence: number;
+    avgPrice?: number;
+    freshnessHours?: number;
+  }>;
+  explanation?: string;
   lastVerifiedAt?: string;
   supportingSources?: Array<{
     sourceType: string;

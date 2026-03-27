@@ -54,10 +54,17 @@ export function DataSourceModal({
                   {typeof record.confidenceScore === "number" ? (
                     <>
                       {" "}
-                      • Confidence: <span className="font-medium">{Math.round(record.confidenceScore * 100)}%</span>
+                      • Confidence:{" "}
+                      <span className="font-medium">
+                        {Math.round(record.confidenceScore * 100)}%
+                        {record.confidenceLabel ? ` (${record.confidenceLabel})` : ""}
+                      </span>
                     </>
                   ) : null}
                 </div>
+                {record.explanation ? (
+                  <div className="mt-2 text-xs text-slate-700 dark:text-slate-200">Why this estimate: {record.explanation}</div>
+                ) : null}
                 <div className="mt-1 text-xs text-slate-700 dark:text-slate-200">
                   {record.lastVerifiedAt ? (
                     <>
@@ -65,6 +72,34 @@ export function DataSourceModal({
                     </>
                   ) : null}
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200">
+                  Source breakdown
+                </div>
+                {record.sourceBreakdown?.length ? (
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {record.sourceBreakdown.map((entry, idx) => (
+                      <div
+                        key={`${entry.sourceCategory}-${idx}`}
+                        className="rounded-xl border border-slate-200/60 bg-white px-4 py-3 text-sm dark:border-white/10 dark:bg-slate-950"
+                      >
+                        <div className="font-medium text-slate-900 dark:text-white">{entry.sourceCategory}</div>
+                        <div className="mt-1 text-xs text-slate-700 dark:text-slate-200">
+                          Samples: {entry.sampleSize} • Avg confidence: {Math.round(entry.avgConfidence * 100)}%
+                        </div>
+                        <div className="mt-1 text-xs text-slate-700 dark:text-slate-200">
+                          Avg price: {typeof entry.avgPrice === "number" ? `PHP ${entry.avgPrice.toFixed(2)}` : "n/a"}
+                          {" • "}
+                          Freshness: {typeof entry.freshnessHours === "number" ? `${Math.round(entry.freshnessHours)}h` : "n/a"}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-slate-700 dark:text-slate-200">No source breakdown available yet.</div>
+                )}
               </div>
 
               <div className="space-y-2">

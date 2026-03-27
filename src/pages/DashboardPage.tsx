@@ -273,7 +273,7 @@ export function DashboardPage() {
                 <div className="space-y-4 pr-0 lg:col-span-8 lg:pr-2">
                   <PhPriceSection
                     title="Philippine Fuel Prices"
-                    subtitle="Latest PH prices (PHP/liter) with weekly adjustments and clear status."
+                    subtitle="Estimated headline price from DOE baseline, global indicators, scraping, and user reports."
                     loading={phLatest.isLoading}
                     isError={phLatest.isError}
                     cards={phCards}
@@ -304,7 +304,7 @@ export function DashboardPage() {
                 />
                 <PhPriceSection
                   title="Philippine Fuel Prices"
-                  subtitle="Latest PH prices (PHP/liter) with weekly adjustments and clear status."
+                  subtitle="Estimated headline price from DOE baseline, global indicators, scraping, and user reports."
                   loading={phLatest.isLoading}
                   isError={phLatest.isError}
                   cards={phCards}
@@ -753,8 +753,13 @@ function toPhCards(items: FuelPricePH[]) {
 
     return {
       label: `${fuel} (PHP/L)`,
-      value: priceNumber !== null ? formatPhpPrice(priceNumber) : "N/A",
-      extraValue: averagePriceNumber !== null ? formatPhpPrice(averagePriceNumber) : undefined,
+      value: priceNumber !== null ? `Estimated: ${formatPhpPrice(doc?.estimatedPrice ?? priceNumber)}` : "N/A",
+      extraValue:
+        typeof doc?.confidenceScore === "number"
+          ? `${Math.round(doc.confidenceScore * 100)}% confidence${doc.confidenceLabel ? ` (${doc.confidenceLabel})` : ""}`
+          : averagePriceNumber !== null
+            ? `Average: ${formatPhpPrice(averagePriceNumber)}`
+            : undefined,
       changePercent: priceNumber !== null && weeklyChangeNumber !== null ? computedChangePercent : undefined,
       lastUpdated: doc?.updatedAt,
       status: doc?.status,

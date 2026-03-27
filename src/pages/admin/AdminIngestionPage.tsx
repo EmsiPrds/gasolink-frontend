@@ -1,18 +1,47 @@
 import { format } from "date-fns";
+import type { ReactNode } from "react";
+import { useMemo, useState } from "react";
 import {
-  useAdminFailedRawSources,
+  useAdminRawSourcesFiltered,
+  useAdminNormalizedRecords,
+  useAdminPublishedRecords,
   useAdminIngestionHealth,
   useAdminTriggerCollectors,
   useAdminTriggerQuality,
-  useAdminTriggerReconcile,
 } from "../../hooks/admin/useAdminIngestion";
 
 export function AdminIngestionPage() {
+  const [rawSourceTypeFilter, setRawSourceTypeFilter] = useState("");
+  const [rawStatusFilter, setRawStatusFilter] = useState("");
+  const [normalizedCategoryFilter, setNormalizedCategoryFilter] = useState("");
+  const [fuelFilter, setFuelFilter] = useState("");
+  const [regionFilter, setRegionFilter] = useState("");
+
   const health = useAdminIngestionHealth();
-  const failedRaw = useAdminFailedRawSources();
+  const rawSources = useAdminRawSourcesFiltered({ sourceType: rawSourceTypeFilter, status: rawStatusFilter });
+  const normalized = useAdminNormalizedRecords({ sourceCategory: normalizedCategoryFilter, fuelType: fuelFilter });
+  const published = useAdminPublishedRecords({ fuelType: fuelFilter, region: regionFilter });
   const triggerCollectors = useAdminTriggerCollectors();
-  const triggerReconcile = useAdminTriggerReconcile();
   const triggerQuality = useAdminTriggerQuality();
+  const checklist = useMemo(() => {
+    const h = health.data;
+    const activeDoe = h?.activeDoeDocument ?? normalized.data?.activeDoeDocument ?? published.data?.activeDoeDocument ?? null;
+    const rawReady = (h?.rawCount ?? 0) > 0;
+    const normalizedReady = (h?.normalizedCount ?? 0) > 0;
+    const outputReady = (h?.publishedCount ?? 0) > 0;
+    const ingestionOk = h?.pipelineStatus.aiIngestion?.status === "success";
+    const searchOk = h?.pipelineStatus.aiSearch?.status === "success";
+    const estimationOk = h?.pipelineStatus.aiEstimation?.status === "success";
+    return [
+      { label: "Raw data gathered", ok: rawReady },
+      { label: "Ingestion worker success", ok: Boolean(ingestionOk) },
+      { label: "AI search extracted records", ok: Boolean(searchOk) },
+      { label: "Latest DOE document resolved (this week or last week)", ok: Boolean(activeDoe) },
+      { label: "Normalized records available", ok: normalizedReady && Boolean(activeDoe) },
+      { label: "Fusion estimation success", ok: Boolean(estimationOk) },
+      { label: "Published outputs available", ok: outputReady && Boolean(activeDoe) },
+    ];
+  }, [health.data, normalized.data?.activeDoeDocument, published.data?.activeDoeDocument]);
 
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-8">
@@ -20,7 +49,7 @@ export function AdminIngestionPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-white">AI Intelligence Control</h1>
           <p className="mt-1 text-sm text-slate-200">
-            Monitor source collection, reconciliation, and the accuracy framework.
+            Monitor AI-native ingestion, publishing intelligence, and quality checks.
           </p>
         </div>
 
@@ -30,14 +59,7 @@ export function AdminIngestionPage() {
             onClick={() => triggerCollectors.mutate()}
             disabled={triggerCollectors.isPending}
           >
-            {triggerCollectors.isPending ? "Collecting..." : "Force system sync"}
-          </button>
-          <button
-            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-white hover:bg-white/10 disabled:opacity-60"
-            onClick={() => triggerReconcile.mutate()}
-            disabled={triggerReconcile.isPending}
-          >
-            {triggerReconcile.isPending ? "Reconciling..." : "Run publish sync"}
+            {triggerCollectors.isPending ? "Running..." : "Run AI ingestion now"}
           </button>
           <button
             className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-white hover:bg-white/10 disabled:opacity-60"
@@ -56,15 +78,64 @@ export function AdminIngestionPage() {
         <Stat title="Market outputs" value={health.data ? String(health.data.publishedCount) : "N/A"} />
       </div>
 
+      <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-5">
+        <p className="text-sm font-semibold text-white">Active DOE document</p>
+        {health.data?.activeDoeDocument ? (
+          <div className="mt-2 text-xs text-slate-200">
+            <div>{health.data.activeDoeDocument.sourceUrl}</div>
+            <div className="mt-1 text-slate-300">
+              {format(new Date(health.data.activeDoeDocument.documentDate), "PP")} (latest-only, this week or last week)
+            </div>
+            {typeof health.data.activeDoeDocument.confidence === "number" ? (
+              <div className="mt-1 text-slate-300">AI confidence: {Math.round(health.data.activeDoeDocument.confidence * 100)}%</div>
+            ) : null}
+            {health.data.activeDoeDocument.reason ? (
+              <div className="mt-1 text-slate-300">Reason: {health.data.activeDoeDocument.reason}</div>
+            ) : null}
+          </div>
+        ) : (
+          <p className="mt-2 text-xs text-energy-200">No DOE document qualifies under strict latest weekly policy (this week/last week).</p>
+        )}
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-5">
+        <p className="text-sm font-semibold text-white">Pipeline stage checklist</p>
+        <div className="mt-3 grid gap-2 md:grid-cols-2">
+          {checklist.map((item) => (
+            <div
+              key={item.label}
+              className={
+                "rounded-lg border px-3 py-2 text-sm " +
+                (item.ok
+                  ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-200"
+                  : "border-energy-500/20 bg-energy-500/10 text-energy-200")
+              }
+            >
+              {item.ok ? "PASS" : "BLOCKED"} - {item.label}
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="mt-6 grid gap-4 md:grid-cols-3">
         <PipelineStatusCard
-          title="Source Collection"
-          log={health.data?.pipelineStatus.collectors ?? null}
+          title="AI Ingestion"
+          log={health.data?.pipelineStatus.aiIngestion ?? null}
           loading={health.isLoading}
         />
         <PipelineStatusCard
-          title="Accuracy Layer"
-          log={health.data?.pipelineStatus.reconciliation ?? null}
+          title="AI Publish Layer"
+          log={health.data?.pipelineStatus.aiIngestion ?? null}
+          loading={health.isLoading}
+        />
+        <PipelineStatusCard
+          title="AI Search"
+          log={health.data?.pipelineStatus.aiSearch ?? null}
+          loading={health.isLoading}
+        />
+        <PipelineStatusCard
+          title="Fusion Estimation"
+          log={health.data?.pipelineStatus.aiEstimation ?? null}
           loading={health.isLoading}
         />
         <PipelineStatusCard
@@ -95,48 +166,182 @@ export function AdminIngestionPage() {
         )}
       </div>
 
-      <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-5">
-        <p className="text-sm font-semibold text-white">Recent failed raw snapshots</p>
-        <p className="mt-1 text-xs text-slate-300">
-          Fail-closed behavior: these are stored for review and are not published.
-        </p>
-
-        {failedRaw.isLoading ? (
-          <p className="mt-3 text-sm text-slate-200">Loading...</p>
-        ) : failedRaw.isError ? (
-          <p className="mt-3 text-sm text-energy-200">Failed to load failed snapshots.</p>
-        ) : failedRaw.data?.length ? (
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="text-xs text-slate-300">
-                <tr>
-                  <th className="py-2 pr-3">Source</th>
-                  <th className="py-2 pr-3">Parser</th>
-                  <th className="py-2 pr-3">When</th>
-                  <th className="py-2 pr-3">Error</th>
-                </tr>
-              </thead>
-              <tbody className="text-slate-200">
-                {failedRaw.data.slice(0, 20).map((r) => (
-                  <tr key={r._id} className="border-t border-white/10">
-                    <td className="py-2 pr-3">
-                      <a className="hover:underline" href={r.sourceUrl} target="_blank" rel="noreferrer">
-                        {r.sourceName}
-                      </a>
-                      <div className="text-xs text-slate-300">{r.sourceType}</div>
-                    </td>
-                    <td className="py-2 pr-3 text-xs text-slate-300">{r.parserId}</td>
-                    <td className="py-2 pr-3 text-xs text-slate-300">{format(new Date(r.scrapedAt), "PP p")}</td>
-                    <td className="py-2 pr-3 text-xs text-energy-200">{r.errorMessage ?? "N/A"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      <div className="mt-6 grid gap-4">
+        <DataTableCard title="Raw gathered sources" subtitle="Direct scraped/search snapshots before normalization.">
+          <div className="mb-3 grid gap-2 md:grid-cols-3">
+            <FilterSelect
+              label="Source type"
+              value={rawSourceTypeFilter}
+              onChange={setRawSourceTypeFilter}
+              options={["", "official_local", "company_advisory", "observed_station", "estimate"]}
+            />
+            <FilterSelect
+              label="Status"
+              value={rawStatusFilter}
+              onChange={setRawStatusFilter}
+              options={["", "raw", "normalized", "failed"]}
+            />
           </div>
-        ) : (
-          <p className="mt-3 text-sm text-slate-200">No failed snapshots found.</p>
-        )}
+          <SimpleTable
+            headers={["Type", "Name", "Status", "Parser", "Scraped At", "Link"]}
+            loading={rawSources.isLoading}
+            error={rawSources.isError}
+            emptyMessage="No raw sources yet."
+            rows={(rawSources.data ?? []).slice(0, 50).map((row) => [
+              row.sourceType,
+              row.sourceName,
+              row.processingStatus,
+              row.parserId,
+              format(new Date(row.scrapedAt), "PP p"),
+              row.sourceUrl,
+            ])}
+            linkColumnIndex={5}
+          />
+        </DataTableCard>
+
+        <DataTableCard title="Normalized records" subtitle="Validated records used by the fusion engine.">
+          <div className="mb-3 grid gap-2 md:grid-cols-3">
+            <FilterSelect
+              label="Source category"
+              value={normalizedCategoryFilter}
+              onChange={setNormalizedCategoryFilter}
+              options={["", "doe_official", "web_scrape", "user_report", "global_api"]}
+            />
+            <FilterSelect
+              label="Fuel"
+              value={fuelFilter}
+              onChange={setFuelFilter}
+              options={["", "Gasoline", "Diesel", "Kerosene"]}
+            />
+          </div>
+          <SimpleTable
+            headers={["Fuel", "Region", "Price/Delta", "Category", "Confidence", "Source"]}
+            loading={normalized.isLoading}
+            error={normalized.isError}
+            emptyMessage="No normalized records yet."
+            rows={(normalized.data?.items ?? []).slice(0, 50).map((row) => [
+              row.fuelType,
+              row.city ? `${row.region} / ${row.city}` : row.region,
+              typeof row.pricePerLiter === "number"
+                ? `PHP ${row.pricePerLiter.toFixed(2)}`
+                : typeof row.priceChange === "number"
+                  ? `${row.priceChange > 0 ? "+" : ""}${row.priceChange.toFixed(2)}`
+                  : "n/a",
+              row.sourceCategory ?? row.sourceType,
+              `${Math.round((row.confidenceScore ?? 0) * 100)}%`,
+              row.sourceUrl,
+            ])}
+            linkColumnIndex={5}
+          />
+        </DataTableCard>
+
+        <DataTableCard title="Published market outputs" subtitle="Final records that the dashboard consumes.">
+          <div className="mb-3 grid gap-2 md:grid-cols-3">
+            <FilterSelect
+              label="Fuel"
+              value={fuelFilter}
+              onChange={setFuelFilter}
+              options={["", "Gasoline", "Diesel", "Kerosene"]}
+            />
+            <FilterSelect
+              label="Region"
+              value={regionFilter}
+              onChange={setRegionFilter}
+              options={["", "NCR", "Luzon", "Visayas", "Mindanao"]}
+            />
+          </div>
+          <SimpleTable
+            headers={["Fuel", "Region", "Estimated Price", "Confidence", "Status", "Updated"]}
+            loading={published.isLoading}
+            error={published.isError}
+            emptyMessage="No published outputs yet."
+            rows={(published.data?.items ?? []).slice(0, 50).map((row) => [
+              row.fuelType,
+              row.region,
+              typeof row.finalPrice === "number" ? `PHP ${row.finalPrice.toFixed(2)}` : "n/a",
+              `${Math.round((row.confidenceScore ?? 0) * 100)}%${row.confidenceLabel ? ` (${row.confidenceLabel})` : ""}`,
+              row.finalStatus,
+              format(new Date(row.updatedAt), "PP p"),
+            ])}
+          />
+        </DataTableCard>
       </div>
+
+    </div>
+  );
+}
+
+function FilterSelect(props: { label: string; value: string; onChange: (v: string) => void; options: string[] }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-xs text-slate-300">{props.label}</span>
+      <select
+        className="w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs text-white"
+        value={props.value}
+        onChange={(e) => props.onChange(e.target.value)}
+      >
+        {props.options.map((option) => (
+          <option key={option || "all"} value={option}>
+            {option || "All"}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function DataTableCard(props: { title: string; subtitle: string; children: ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+      <p className="text-sm font-semibold text-white">{props.title}</p>
+      <p className="mt-1 text-xs text-slate-300">{props.subtitle}</p>
+      <div className="mt-3">{props.children}</div>
+    </div>
+  );
+}
+
+function SimpleTable(props: {
+  headers: string[];
+  rows: Array<string[]>;
+  loading?: boolean;
+  error?: boolean;
+  emptyMessage: string;
+  linkColumnIndex?: number;
+}) {
+  if (props.loading) return <p className="text-sm text-slate-200">Loading...</p>;
+  if (props.error) return <p className="text-sm text-energy-200">Failed to load data.</p>;
+  if (!props.rows.length) return <p className="text-sm text-slate-200">{props.emptyMessage}</p>;
+
+  return (
+    <div className="overflow-x-auto rounded-xl border border-white/10">
+      <table className="min-w-full text-left text-xs text-slate-100">
+        <thead className="bg-white/10">
+          <tr>
+            {props.headers.map((header) => (
+              <th key={header} className="px-3 py-2 font-semibold uppercase tracking-wide text-slate-200">
+                {header}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {props.rows.map((row, idx) => (
+            <tr key={idx} className="border-t border-white/10">
+              {row.map((value, cellIdx) => (
+                <td key={`${idx}-${cellIdx}`} className="max-w-[360px] truncate px-3 py-2">
+                  {props.linkColumnIndex === cellIdx ? (
+                    <a href={value} target="_blank" rel="noreferrer" className="text-brand-300 hover:underline">
+                      {value}
+                    </a>
+                  ) : (
+                    value
+                  )}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
