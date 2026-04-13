@@ -1,6 +1,7 @@
 import { format } from "date-fns";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   useAdminRawSourcesFiltered,
   useAdminNormalizedRecords,
@@ -30,14 +31,12 @@ export function AdminIngestionPage() {
     const normalizedReady = (h?.normalizedCount ?? 0) > 0;
     const outputReady = (h?.publishedCount ?? 0) > 0;
     const ingestionOk = h?.pipelineStatus.aiIngestion?.status === "success";
-    const searchOk = h?.pipelineStatus.aiSearch?.status === "success";
     const estimationOk = h?.pipelineStatus.aiEstimation?.status === "success";
     return [
-      { label: "Raw data gathered", ok: rawReady },
+      { label: "Manual DOE upload available", ok: rawReady },
       { label: "Ingestion worker success", ok: Boolean(ingestionOk) },
-      { label: "AI search extracted records", ok: Boolean(searchOk) },
-      { label: "Latest DOE document resolved (this week or last week)", ok: Boolean(activeDoe) },
-      { label: "Normalized records available", ok: normalizedReady && Boolean(activeDoe) },
+      { label: "Latest DOE document resolved", ok: Boolean(activeDoe) },
+      { label: "Normalized DOE records available", ok: normalizedReady && Boolean(activeDoe) },
       { label: "Fusion estimation success", ok: Boolean(estimationOk) },
       { label: "Published outputs available", ok: outputReady && Boolean(activeDoe) },
     ];
@@ -49,7 +48,7 @@ export function AdminIngestionPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-white">AI Intelligence Control</h1>
           <p className="mt-1 text-sm text-slate-200">
-            Monitor AI-native ingestion, publishing intelligence, and quality checks.
+            Monitor manual DOE ingestion, publishing intelligence, and quality checks.
           </p>
         </div>
 
@@ -59,8 +58,14 @@ export function AdminIngestionPage() {
             onClick={() => triggerCollectors.mutate()}
             disabled={triggerCollectors.isPending}
           >
-            {triggerCollectors.isPending ? "Running..." : "Run AI ingestion now"}
+            {triggerCollectors.isPending ? "Running..." : "Run manual DOE publish now"}
           </button>
+          <Link
+            to="/admin/doe"
+            className="rounded-xl border border-sky-400/40 bg-sky-500/10 px-3 py-2 text-center text-sm font-semibold text-sky-200 hover:bg-sky-500/20"
+          >
+            Open DOE upload
+          </Link>
           <button
             className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-white hover:bg-white/10 disabled:opacity-60"
             onClick={() => triggerQuality.mutate()}
@@ -124,13 +129,8 @@ export function AdminIngestionPage() {
           loading={health.isLoading}
         />
         <PipelineStatusCard
-          title="AI Publish Layer"
+          title="Manual DOE Publish Layer"
           log={health.data?.pipelineStatus.aiIngestion ?? null}
-          loading={health.isLoading}
-        />
-        <PipelineStatusCard
-          title="AI Search"
-          log={health.data?.pipelineStatus.aiSearch ?? null}
           loading={health.isLoading}
         />
         <PipelineStatusCard

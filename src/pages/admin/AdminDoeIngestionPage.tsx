@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
   useDoeCommit,
-  useDoeLink,
   useDoeUpload,
   useDoeUploadDetails,
   useDoeUploads,
@@ -10,19 +9,58 @@ import {
 
 type EditableRow = DoePreviewRow & { include: boolean };
 
+function getRowWarnings(row: EditableRow): string[] {
+  const warnings: string[] = [];
+  if (!row.include) return warnings;
+  if (!row.fuelType?.trim()) warnings.push("Fuel is required.");
+  if (!row.region?.trim()) warnings.push("Region is required.");
+  if (row.pricePerLiter == null && row.priceChange == null) warnings.push("Price or change is required.");
+  if (typeof row.pricePerLiter === "number" && (row.pricePerLiter < 30 || row.pricePerLiter > 120)) {
+    warnings.push("Price looks out of expected range (30-120).");
+  }
+  if (typeof row.priceChange === "number" && (row.priceChange < -15 || row.priceChange > 15)) {
+    warnings.push("Price change looks out of expected range (-15 to +15).");
+  }
+  if (!row.effectiveAt) {
+    warnings.push("Effectivity date is required.");
+  } else {
+    const date = new Date(row.effectiveAt);
+    if (!Number.isFinite(date.getTime())) {
+      warnings.push("Effectivity date is invalid.");
+    } else {
+      const now = Date.now();
+      const minMs = now - 14 * 24 * 60 * 60 * 1000;
+      const maxMs = now + 3 * 24 * 60 * 60 * 1000;
+      const t = date.getTime();
+      if (t < minMs || t > maxMs) warnings.push("Effectivity date is outside 14-day freshness window.");
+    }
+  }
+  return warnings;
+}
+
 export function AdminDoeIngestionPage() {
   const [file, setFile] = useState<File | null>(null);
   const [note, setNote] = useState("");
-  const [linkUrl, setLinkUrl] = useState("");
   const [preview, setPreview] = useState<{
     rawSourceId: string;
     rows: EditableRow[];
     rawTextSample: string;
   } | null>(null);
   const [selectedUploadId, setSelectedUploadId] = useState<string | null>(null);
+  const [commitSummary, setCommitSummary] = useState<null | {
+    createdOrUpdated: number;
+    parseConfidence: number;
+    detectedEffectiveAt?: string;
+    warnings: string[];
+    aiSummary: string;
+    staleRejected: number;
+    invalidRejected: number;
+    publishedCount: number;
+    cleanupNormalized: number;
+    cleanupPublished: number;
+  }>(null);
 
   const uploadMutation = useDoeUpload();
-  const linkMutation = useDoeLink();
   const uploadsQuery = useDoeUploads();
   const detailsQuery = useDoeUploadDetails(selectedUploadId);
   const commitMutation = useDoeCommit(preview?.rawSourceId ?? "");
@@ -32,16 +70,6 @@ export function AdminDoeIngestionPage() {
   const handleUpload = async () => {
     if (!file) return;
     const res = await uploadMutation.mutateAsync({ file, note: note || undefined });
-    setPreview({
-      rawSourceId: res.rawSourceId,
-      rows: res.rows.map((r) => ({ ...r, include: true })),
-      rawTextSample: res.rawTextSample,
-    });
-  };
-
-  const handleLinkSubmit = async () => {
-    if (!linkUrl.trim()) return;
-    const res = await linkMutation.mutateAsync({ url: linkUrl.trim(), note: note || undefined });
     setPreview({
       rawSourceId: res.rawSourceId,
       rows: res.rows.map((r) => ({ ...r, include: true })),
@@ -62,7 +90,8 @@ export function AdminDoeIngestionPage() {
       area: r.area,
       companyName: r.companyName,
     }));
-    await commitMutation.mutateAsync(payload);
+    const result = await commitMutation.mutateAsync(payload);
+    setCommitSummary(result);
   };
 
   return (
@@ -70,20 +99,28 @@ export function AdminDoeIngestionPage() {
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold text-white">DOE ingestion</h1>
         <p className="text-sm text-slate-300">
-          Upload official DOE PDFs or paste DOE links. The system will parse fuel prices, let you review and edit them,
-          then publish only approved data to the dashboard.
+          Updated process: upload DOE file, review extracted rows, then commit to run AI validation and publish.
         </p>
       </header>
+
+      <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+        <h2 className="text-sm font-semibold text-white">Process</h2>
+        <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs text-slate-300">
+          <li>Upload current DOE file (PDF, CSV/XLSX, or image).</li>
+          <li>Review and edit extracted rows in preview.</li>
+          <li>Commit approved rows to run AI analysis and publish.</li>
+        </ol>
+      </section>
 
       <section className="grid gap-6 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         <div className="space-y-4 rounded-2xl border border-white/10 bg-white/5 p-4">
           <h2 className="text-sm font-semibold text-white">Source input</h2>
           <div className="space-y-4 text-sm">
             <div className="space-y-2">
-              <label className="block text-xs font-medium text-slate-300">Upload DOE PDF</label>
+              <label className="block text-xs font-medium text-slate-300">Upload DOE file</label>
               <input
                 type="file"
-                accept="application/pdf"
+                accept=".pdf,.csv,.xls,.xlsx,image/*"
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                 className="block w-full text-xs text-slate-200 file:mr-3 file:rounded-md file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-white hover:file:bg-white/20"
               />
@@ -93,26 +130,7 @@ export function AdminDoeIngestionPage() {
                 disabled={!file || uploadMutation.isPending}
                 className="rounded-md bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-emerald-500/50"
               >
-                {uploadMutation.isPending ? "Uploading…" : "Upload and parse"}
-              </button>
-            </div>
-
-            <div className="space-y-2 border-t border-white/10 pt-4">
-              <label className="block text-xs font-medium text-slate-300">Paste DOE link</label>
-              <input
-                type="url"
-                placeholder="https://www.doe.gov.ph/..."
-                value={linkUrl}
-                onChange={(e) => setLinkUrl(e.target.value)}
-                className="w-full rounded-md border border-white/10 bg-slate-900 px-3 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none"
-              />
-              <button
-                type="button"
-                onClick={handleLinkSubmit}
-                disabled={!linkUrl.trim() || linkMutation.isPending}
-                className="rounded-md bg-sky-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sky-600 disabled:cursor-not-allowed disabled:bg-sky-500/50"
-              >
-                {linkMutation.isPending ? "Parsing link…" : "Parse link"}
+                {uploadMutation.isPending ? "Uploading..." : "Upload and parse"}
               </button>
             </div>
 
@@ -146,7 +164,7 @@ export function AdminDoeIngestionPage() {
 
           {!hasPreview && (
             <p className="text-xs text-slate-300">
-              Upload a DOE PDF or paste a DOE link to see extracted fuel prices and raw text here before saving.
+              Upload a DOE file to see extracted fuel prices and raw text here before committing.
             </p>
           )}
 
@@ -167,8 +185,10 @@ export function AdminDoeIngestionPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {preview.rows.map((row, idx) => (
-                      <tr key={row.tempId} className="border-t border-white/5">
+                    {preview.rows.map((row, idx) => {
+                      const rowWarnings = getRowWarnings(row);
+                      return (
+                      <tr key={row.tempId} className={`border-t ${rowWarnings.length ? "border-rose-500/30 bg-rose-500/5" : "border-white/5"}`}>
                       <td className="px-3 py-1.5 align-top">
                         <input
                           type="checkbox"
@@ -263,9 +283,12 @@ export function AdminDoeIngestionPage() {
                         >
                           {row.sourceUrl}
                         </a>
+                        {rowWarnings.length > 0 && (
+                          <div className="mt-1 text-[10px] text-rose-300">{rowWarnings[0]}</div>
+                        )}
                       </td>
                       </tr>
-                    ))}
+                    )})}
                   </tbody>
                 </table>
               </div>
@@ -280,6 +303,31 @@ export function AdminDoeIngestionPage() {
           )}
         </div>
       </section>
+
+      {commitSummary && (
+        <section className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-xs text-emerald-100">
+          <p className="font-semibold">Commit analysis and publish result</p>
+          <p className="mt-1">
+            Normalized: {commitSummary.createdOrUpdated} | Published: {commitSummary.publishedCount} | Cleanup (normalized/published):{" "}
+            {commitSummary.cleanupNormalized}/{commitSummary.cleanupPublished}
+          </p>
+          <p className="mt-1">
+            Rejected rows: stale={commitSummary.staleRejected}, invalid={commitSummary.invalidRejected}
+          </p>
+          <p className="mt-1">AI parse confidence: {Math.round(commitSummary.parseConfidence * 100)}%</p>
+          {commitSummary.detectedEffectiveAt && (
+            <p className="mt-1">Detected effectivity: {new Date(commitSummary.detectedEffectiveAt).toLocaleString()}</p>
+          )}
+          <p className="mt-1">AI summary: {commitSummary.aiSummary}</p>
+          {commitSummary.warnings.length > 0 && (
+            <ul className="mt-2 list-disc pl-5">
+              {commitSummary.warnings.map((warning, idx) => (
+                <li key={`${warning}-${idx}`}>{warning}</li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
 
       <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
         <div className="flex items-center justify-between pb-2">

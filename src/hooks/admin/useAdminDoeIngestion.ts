@@ -29,7 +29,7 @@ export function useDoeUpload() {
   return useMutation({
     mutationFn: async (params: { file: File; note?: string }) => {
       const form = new FormData();
-      form.append("pdf", params.file);
+      form.append("file", params.file);
       if (params.note) form.append("note", params.note);
       const res = await adminApi.post<ApiResponse<DoePreviewPayload>>("/admin/doe/upload", form, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -53,7 +53,21 @@ export function useDoeLink() {
 export function useDoeCommit(rawSourceId: string) {
   return useMutation({
     mutationFn: async (rows: any[]) => {
-      const res = await adminApi.post<ApiResponse<{ ok: boolean; createdOrUpdated: number }>>(
+      const res = await adminApi.post<
+        ApiResponse<{
+          ok: boolean;
+          createdOrUpdated: number;
+          parseConfidence: number;
+          detectedEffectiveAt?: string;
+          warnings: string[];
+          aiSummary: string;
+          staleRejected: number;
+          invalidRejected: number;
+          publishedCount: number;
+          cleanupNormalized: number;
+          cleanupPublished: number;
+        }>
+      >(
         `/admin/doe/preview/${rawSourceId}/commit`,
         { rows },
       );
@@ -69,7 +83,7 @@ export type DoeUploadRow = {
   scrapedAt: string;
   processingStatus: string;
   uploadContext?: {
-    uploadType?: "file" | "link";
+    uploadType?: "file" | "link" | "pdf" | "csv" | "xlsx" | "image";
     originalFilename?: string;
     originalUrl?: string;
     note?: string;
